@@ -30,25 +30,29 @@ window.videojs.Hls.AacStream = function() {
 
   this.tags = [];
 
-  // (pts:uint):void
-  this.setTimeStampOffset = function(pts) {
+  // (pts:uint, pes_size:int, dataAligned:Boolean):void
+  this.setNextTimeStamp = function(pts, pes_size, dataAligned) {
+
+    // on the first invocation, capture the starting PTS value
     pts_offset = pts;
 
     // keep track of the last time a metadata tag was written out
     // set the initial value so metadata will be generated before any
     // payload data
     lastMetaPts = pts - 1000;
-  };
 
-  // (pts:uint, pes_size:int, dataAligned:Boolean):void
-  this.setNextTimeStamp = function(pts, pes_size, dataAligned) {
-    next_pts = pts - pts_offset;
-    pes_length = pes_size;
+    // on subsequent invocations, calculate the PTS based on the starting offset
+    this.setNextTimeStamp = function(pts, pes_size, dataAligned) {
+      next_pts = pts - pts_offset;
+      pes_length = pes_size;
 
-    // If data is aligned, flush all internal buffers
-    if (dataAligned) {
-      state = 0;
-    }
+      // If data is aligned, flush all internal buffers
+      if (dataAligned) {
+        state = 0;
+      }
+    };
+
+    this.setNextTimeStamp(pts, pes_size, dataAligned);
   };
 
   // (data:ByteArray, o:int = 0, l:int = 0):void
@@ -76,7 +80,7 @@ window.videojs.Hls.AacStream = function() {
           return;
         }
         if (0xFF !== data[offset]) {
-          console.assert(false, 'Error no ATDS header found');
+          //console.assert(false, 'Error no ATDS header found');
           offset += 1;
           state = 0;
           return;
@@ -90,7 +94,7 @@ window.videojs.Hls.AacStream = function() {
           return;
         }
         if (0xF0 !== (data[offset] & 0xF0)) {
-          console.assert(false, 'Error no ATDS header found');
+          //console.assert(false, 'Error no ATDS header found');
           offset +=1;
           state = 0;
           return;

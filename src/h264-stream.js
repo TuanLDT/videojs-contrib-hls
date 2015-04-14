@@ -258,21 +258,24 @@
 
     this.tags = [];
 
-    //(pts:uint):void
-    this.setTimeStampOffset = function(pts) {
-      pts_offset = pts;
-    };
-
     //(pts:uint, dts:uint, dataAligned:Boolean):void
     this.setNextTimeStamp = function(pts, dts, dataAligned) {
-      // We could end up with a DTS less than 0 here. We need to deal with that!
-      next_pts = pts - pts_offset;
-      next_dts = dts - pts_offset;
+      // on the first invocation, capture the starting PTS value
+      pts_offset = pts;
 
-      // If data is aligned, flush all internal buffers
-      if (dataAligned) {
-        this.finishFrame();
-      }
+      // on subsequent invocations, calculate the PTS based on the starting offset
+      this.setNextTimeStamp = function(pts, dts, dataAligned) {
+        // We could end up with a DTS less than 0 here. We need to deal with that!
+        next_pts = pts - pts_offset;
+        next_dts = dts - pts_offset;
+
+        // If data is aligned, flush all internal buffers
+        if (dataAligned) {
+          this.finishFrame();
+        }
+      };
+
+      this.setNextTimeStamp(pts, dts, dataAligned);
     };
 
     this.finishFrame = function() {
@@ -389,8 +392,13 @@
           } else {
             // If we get here we have 00 00 00 or 00 00 01
             if (data[offset + 2] === 1) {
-              if (offset > start) {
+              // TuanLDT Add -S
+              // Nếu 
+              if (h264Frame && offset > start) {
+               // TuanLDT Add -E 
                 h264Frame.writeBytes(data, start, offset - start);
+              } else {
+                
               }
               state = 3;
               offset += 3;
@@ -400,7 +408,7 @@
             if (end - offset >= 4 &&
                 data[offset + 2] === 0 &&
                 data[offset + 3] === 1) {
-              if (offset > start) {
+              if (h264Frame && offset > start) {
                 h264Frame.writeBytes(data, start, offset - start);
               }
               state = 3;

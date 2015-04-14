@@ -4,7 +4,6 @@
     FlvTag = videojs.Hls.FlvTag,
     H264Stream = videojs.Hls.H264Stream,
     AacStream = videojs.Hls.AacStream,
-    MetadataStream = videojs.Hls.MetadataStream,
     MP2T_PACKET_LENGTH,
     STREAM_TYPES;
 
@@ -19,10 +18,7 @@
       streamBuffer = new Uint8Array(MP2T_PACKET_LENGTH),
       streamBufferByteCount = 0,
       h264Stream = new H264Stream(),
-      aacStream = new AacStream(),
-      h264HasTimeStampOffset = false,
-      aacHasTimeStampOffset = false,
-      timeStampOffset;
+      aacStream = new AacStream();
 
     // expose the stream metadata
     self.stream = {
@@ -30,9 +26,6 @@
       // that form their elementary streams
       programMapTable: {}
     };
-
-    // allow in-band metadata to be observed
-    self.metadataStream = new MetadataStream();
 
     // For information on the FLV format, see
     // http://download.macromedia.com/f4v/video_file_format_spec_v10_1.pdf.
@@ -294,8 +287,7 @@
           self.stream.pmtPid = (data[offset + 2] & 0x1F) << 8 | data[offset + 3];
         }
       } else if (pid === self.stream.programMapTable[STREAM_TYPES.h264] ||
-                 pid === self.stream.programMapTable[STREAM_TYPES.adts] ||
-                 pid === self.stream.programMapTable[STREAM_TYPES.metadata]) {
+                 pid === self.stream.programMapTable[STREAM_TYPES.adts]) {
         if (pusi) {
           // comment out for speed
           if (0x00 !== data[offset + 0] || 0x00 !== data[offset + 1] || 0x01 !== data[offset + 2]) {
@@ -336,44 +328,17 @@
               dts /= 45;
             }
           }
-
           // Skip past "optional" portion of PTS header
           offset += pesHeaderLength;
 
-          // align the metadata stream PTS values with the start of
-          // the other elementary streams
-          if (!self.metadataStream.timestampOffset) {
-            self.metadataStream.timestampOffset = pts;
-          }
-
           if (pid === self.stream.programMapTable[STREAM_TYPES.h264]) {
-            if (!h264HasTimeStampOffset) {
-              h264HasTimeStampOffset = true;
-              if (timeStampOffset === undefined) {
-                timeStampOffset = pts;
-              }
-              h264Stream.setTimeStampOffset(timeStampOffset);
-            }
             h264Stream.setNextTimeStamp(pts,
                                         dts,
                                         dataAlignmentIndicator);
           } else if (pid === self.stream.programMapTable[STREAM_TYPES.adts]) {
-            if (!aacHasTimeStampOffset) {
-              aacHasTimeStampOffset = true;
-              if (timeStampOffset === undefined) {
-                timeStampOffset = pts;
-              }
-              aacStream.setTimeStampOffset(timeStampOffset);
-            }
             aacStream.setNextTimeStamp(pts,
                                        pesPacketSize,
                                        dataAlignmentIndicator);
-          } else {
-            self.metadataStream.push({
-              pts: pts,
-              dts: dts,
-              data: data.subarray(offset)
-            });
           }
         }
 
@@ -418,26 +383,23 @@
             // the PID for this entry
             elementaryPID = (data[offset + 1] & 0x1F) << 8 | data[offset + 2];
 
-            if (streamType === STREAM_TYPES.h264 &&
-                self.stream.programMapTable[streamType] &&
-                self.stream.programMapTable[streamType] !== elementaryPID) {
-              throw new Error("Program has more than 1 video stream");
-            } else if (streamType === STREAM_TYPES.adts &&
-                       self.stream.programMapTable[streamType] &&
-                       self.stream.programMapTable[streamType] !== elementaryPID) {
-              throw new Error("Program has more than 1 audio Stream");
+            if (streamType === STREAM_TYPES.h264) {
+              if (self.stream.programMapTable[streamType] &&
+                  self.stream.programMapTable[streamType] !== elementaryPID) {
+                throw new Error("Program has more than 1 video stream");
+              }
+              self.stream.programMapTable[streamType] = elementaryPID;
+            } else if (streamType === STREAM_TYPES.adts) {
+              if (self.stream.programMapTable[streamType] &&
+                  self.stream.programMapTable[streamType] !== elementaryPID) {
+                throw new Error("Program has more than 1 audio Stream");
+              }
+              self.stream.programMapTable[streamType] = elementaryPID;
             }
-            // add the stream type entry to the map
-            self.stream.programMapTable[streamType] = elementaryPID;
-
             // TODO add support for MP3 audio
 
             // the length of the entry descriptor
             ESInfolength = (data[offset + 3] & 0x0F) << 8 | data[offset + 4];
-            // capture the stream descriptor for metadata streams
-            if (streamType === STREAM_TYPES.metadata) {
-              self.metadataStream.descriptor = new Uint8Array(data.subarray(offset + 5, offset + 5 + ESInfolength));
-            }
             // move to the first byte after the end of this entry
             offset += 5 + ESInfolength;
             pmtSectionLength -=  5 + ESInfolength;
@@ -473,8 +435,7 @@
   videojs.Hls.SegmentParser.MP2T_PACKET_LENGTH = MP2T_PACKET_LENGTH = 188;
   videojs.Hls.SegmentParser.STREAM_TYPES = STREAM_TYPES = {
     h264: 0x1b,
-    adts: 0x0f,
-    metadata: 0x15
+    adts: 0x0f
   };
 
 })(window);

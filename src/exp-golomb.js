@@ -71,7 +71,7 @@ window.videojs.Hls.ExpGolomb = function(workingData) {
       bits = Math.min(workingBitsAvailable, size), // :uint
       valu = workingWord >>> (32 - bits); // :uint
 
-    console.assert(size < 32, 'Cannot read more than 32 bits at a time');
+    //console.assert(size < 32, 'Cannot read more than 32 bits at a time');
 
     workingBitsAvailable -= bits;
     if (workingBitsAvailable > 0) {

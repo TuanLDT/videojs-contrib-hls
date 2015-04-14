@@ -17,7 +17,7 @@
     var
       options = {
         method: 'GET',
-        timeout: 45 * 1000
+        timeout: 10 * 1000
       },
       request,
       abortTimeout;

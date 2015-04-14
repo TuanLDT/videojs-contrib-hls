@@ -70,7 +70,9 @@
               responseText: xhr.responseText,
               code: (xhr.status >= 500) ? 4 : 2
             };
-            return loader.trigger('error');
+            //return loader.trigger('error');
+            loader.trigger('error');
+            // TuanLDT edit -E
           }
 
           loader.state = 'HAVE_METADATA';

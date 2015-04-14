@@ -224,7 +224,7 @@ hls.FlvTag = function(type, extraData) {
     this.view.setUint16(this.position, key.length);
     this.position += 2;
     for (i = 0; i < key.length; i++) {
-      console.assert(key.charCodeAt(i) < 255);
+      //console.assert(key.charCodeAt(i) < 255);
       prepareWrite(this, 1);
       this.bytes[this.position] = key.charCodeAt(i);
       this.position++;
@@ -308,7 +308,7 @@ hls.FlvTag = function(type, extraData) {
     // trim down the byte buffer to what is actually being used
     this.bytes = this.bytes.subarray(0, this.length);
     this.frameTime = hls.FlvTag.frameTime(this.bytes);
-    console.assert(this.bytes.byteLength === this.length);
+    //console.assert(this.bytes.byteLength === this.length);
     return this;
   };
 };
